@@ -133,7 +133,7 @@ data "aws_iam_policy_document" "vault_iam_user_policy_document" {
 
 resource "aws_iam_policy" "aws_vault_user_policy" {
   count = var.create_vault_resources ? 1 : 0
-  name = "vault_${var.region}-${local.generated_seed}"
+  name_prefix = "vault_${var.region}-"
   description = "Vault Policy for the provided IAM User"
   policy      = data.aws_iam_policy_document.vault_iam_user_policy_document[0].json
 }

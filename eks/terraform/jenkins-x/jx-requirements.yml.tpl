@@ -38,11 +38,11 @@ storage:
     url: s3://${logs_storage_bucket}
   reports:
     enabled: ${enable_reports_storage}
-    url: s3://${reports_storage_bucket}"
+    url: s3://${reports_storage_bucket}
   repository:
     enabled: ${enable_repository_storage}
     url: s3://${repository_storage_bucket}
 versionStream:
-  ref: 2.0.1192+cjxd.7
-  url: https://github.com/cloudbees/cloudbees-jenkins-x-versions.git
+  ref: master
+  url: https://github.com/jenkins-x/jenkins-x-versions.git
 webhook: prow

@@ -27,6 +27,10 @@ data "aws_eks_cluster_auth" "cluster" {
   name = module.eks.cluster_id
 }
 
+data "aws_availability_zones" "available" {}
+
+data "aws_caller_identity" "current" {}
+
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority.0.data)
@@ -34,10 +38,6 @@ provider "kubernetes" {
   load_config_file       = false
   version                = "1.10.0"
 }
-
-data "aws_availability_zones" "available" {}
-
-data "aws_caller_identity" "current" {}
 
 module "vpc" {
   source               = "terraform-aws-modules/vpc/aws"
@@ -86,4 +86,60 @@ module "eks" {
       ]
     }
   ]
+}
+
+module "jenkinsx" {
+  source                         = "./jenkins-x"
+  region                         = var.region
+  cluster_name                   = var.cluster_name
+  apex_domain                    = var.apex_domain
+  subdomain                      = var.subdomain
+  tls_email                      = var.tls_email
+  enable_logs_storage            = var.enable_logs_storage
+  enable_reports_storage         = var.enable_reports_storage
+  enable_repository_storage      = var.enable_repository_storage
+  enable_external_dns            = var.enable_external_dns
+  create_and_configure_subdomain = var.create_and_configure_subdomain
+  enable_tls                     = var.enable_tls
+  production_letsencrypt         = var.production_letsencrypt
+  oidc_provider_url              = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
+  cluster_id                     = module.eks.cluster_id
+}
+
+module "vault" {
+  source                 = "./vault"
+  create_vault_resources = var.create_vault_resources
+  cluster_name           = var.cluster_name
+  account_id             = var.account_id
+  vault_user             = var.vault_user
+}
+
+# jx-requirements.yml file generation
+
+resource "local_file" "jx-requirements" {
+  depends_on = [
+    module.jenkinsx,
+    module.vault
+  ]
+  content = templatefile("${path.module}/jenkins-x/jx-requirements.yml.tpl", {
+    cluster_name                = var.cluster_name
+    region                      = var.region
+    enable_logs_storage         = var.enable_logs_storage
+    logs_storage_bucket         = module.jenkinsx.logs-jenkins-x
+    enable_reports_storage      = var.enable_reports_storage
+    reports_storage_bucket      = module.jenkinsx.reports-jenkins-x
+    enable_repository_storage   = var.enable_repository_storage
+    repository_storage_bucket   = module.jenkinsx.repository-jenkins-x
+    create_vault_resources      = var.create_vault_resources
+    vault_kms_key               = module.vault.kms_vault_unseal 
+    vault_bucket                = module.vault.vault_unseal_bucket
+    vault_dynamodb_table        = module.vault.vault_dynamodb_table
+    vault_user                  = var.vault_user
+    enable_external_dns         = var.enable_external_dns
+    domain                      = trimprefix(join(".", [var.subdomain, var.apex_domain]), ".")
+    enable_tls                  = var.enable_tls
+    tls_email                   = var.tls_email
+    use_production_letsencrypt  = var.production_letsencrypt
+  })
+  filename = "../${path.module}/jx-requirements.yml"
 }
