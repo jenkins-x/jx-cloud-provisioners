@@ -86,6 +86,9 @@ module "eks" {
       ]
     }
   ]
+  workers_additional_policies = [
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+  ]
 }
 
 module "jenkinsx" {
