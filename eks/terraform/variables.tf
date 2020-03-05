@@ -12,7 +12,8 @@ variable "account_id" {
 }
 
 variable "vault_user" {
-  type = string
+  type    = string
+  default = ""
 }
 
 variable "manage_aws_auth" {
